@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRESS PLAY · lo-fi tape radio</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%BC%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Manrope:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="glow"></div>
+
+<main class="scene">
+  <svg class="phones" viewBox="0 0 200 200" aria-hidden="true">
+    <path d="M40 120 C40 40 160 40 160 120" fill="none" stroke="#e6d5c8" stroke-width="12" stroke-linecap="round"/>
+    <rect x="22" y="112" width="36" height="52" rx="16" fill="#0b1a30"/>
+    <rect x="142" y="112" width="36" height="52" rx="16" fill="#0b1a30"/>
+    <circle cx="40" cy="138" r="12" fill="#e6d5c8"/>
+    <circle cx="160" cy="138" r="12" fill="#e6d5c8"/>
+    <path d="M40 164 C40 190 90 196 120 190" fill="none" stroke="#0b1a30" stroke-width="4"/>
+  </svg>
+
+  <section class="walkman">
+    <span class="screw s1"></span>
+    <span class="screw s2"></span>
+    <div class="top">
+      <button type="button" class="btn play" id="playBtn" title="PLAY / PAUSE (пробел)">
+        <svg class="ic-play" viewBox="0 0 12 12"><path d="M2 1l9 5-9 5z"/></svg>
+        <svg class="ic-pause" viewBox="0 0 12 12"><path d="M2 1h3v10H2zM7 1h3v10H7z"/></svg>
+        <span class="lbl">PLAY</span>
+      </button>
+      <button type="button" class="btn" id="stopBtn" title="STOP (S)">
+        <svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" rx="1"/></svg>
+        <span class="lbl">STOP</span>
+      </button>
+      <button type="button" class="btn" id="rewBtn" title="PREV (←)">
+        <svg viewBox="0 0 12 12"><path d="M6 6l5-4v8zM1 6l5-4v8z"/></svg>
+        <span class="lbl">REW</span>
+      </button>
+      <button type="button" class="btn" id="ffBtn" title="NEXT (→)">
+        <svg viewBox="0 0 12 12"><path d="M6 6L1 2v8zM11 6L6 2v8z"/></svg>
+        <span class="lbl">FF</span>
+      </button>
+      <button type="button" class="btn" id="flipBtn" title="Перевернуть кассету (F)">
+        <svg viewBox="0 0 12 12"><path d="M1 3h7V1l3 3-3 3V5H1zM11 9H4V7L1 10l3 3v-2h7z"/></svg>
+        <span class="lbl">SIDE</span>
+      </button>
+      <div class="jack"></div>
+    </div>
+
+    <div class="body">
+      <div class="face">
+        <div class="logo">ORBITA</div>
+        <div class="lcd">
+          <span id="lcdSide">A1</span>
+          <span class="t" id="lcdTitle">NIGHT BUS</span>
+          <span class="tm" id="lcdTime">00:00</span>
+        </div>
+        <div class="window">
+          <div class="cassette" id="cassette">
+            <div class="tape-line t"></div>
+            <div class="tape-line b"></div>
+            <svg class="reel" id="reelL" viewBox="0 0 100 100">
+              <circle class="reel-body" cx="50" cy="50" r="46"/>
+              <circle class="ring" cx="50" cy="50" r="38"/>
+              <g class="spokes">
+                <rect x="45" y="16" width="10" height="24" rx="5"/>
+                <rect x="45" y="16" width="10" height="24" rx="5" transform="rotate(120 50 50)"/>
+                <rect x="45" y="16" width="10" height="24" rx="5" transform="rotate(240 50 50)"/>
+              </g>
+              <circle class="hub" cx="50" cy="50" r="10"/>
+            </svg>
+            <div class="tape-label" id="tapeLabel">NIGHT BUS</div>
+            <svg class="reel" id="reelR" viewBox="0 0 100 100">
+              <circle class="reel-body" cx="50" cy="50" r="46"/>
+              <circle class="ring" cx="50" cy="50" r="38"/>
+              <g class="spokes">
+                <rect x="45" y="16" width="10" height="24" rx="5"/>
+                <rect x="45" y="16" width="10" height="24" rx="5" transform="rotate(120 50 50)"/>
+                <rect x="45" y="16" width="10" height="24" rx="5" transform="rotate(240 50 50)"/>
+              </g>
+              <circle class="hub" cx="50" cy="50" r="10"/>
+            </svg>
+          </div>
+          <div class="led"></div>
+        </div>
+        <div class="counter-row">
+          <span class="counter" id="counter"></span>
+          <span class="hint">счётчик ленты · ваше время здесь</span>
+        </div>
+        <div class="meter">
+          <div class="mrow"><b>L</b><div class="segs" id="mL"></div></div>
+          <div class="mrow"><b>R</b><div class="segs" id="mR"></div></div>
+        </div>
+        <div class="vol-row"><label for="vol">VOL</label> <input type="range" id="vol" min="0" max="100" value="70" title="громкость"></div>
+        <div class="logo wm">TAPE RADIO · №3</div>
+      </div>
+      <div class="side"></div>
+    </div>
+  </section>
+
+  <aside class="jcard">
+    <h1>PRESS PLAY</h1>
+    <p class="tag">lo-fi radio · лента пишет всегда</p>
+    <div class="side-title">SIDE A</div><div id="listA"></div>
+    <div class="side-title">SIDE B</div><div id="listB"></div>
+    <p class="status" id="status">инициализация…</p>
+    <p class="credits">три звуковых движка: плёнка (lo-fi), 8-бит (как NES: два пульс-канала, треугольный бас, шумовой канал) и фетр-пианино в комнате. всё синтезируется в реальном времени, ни одного аудиофайла.</p>
+    <div class="barcode"></div>
+  </aside>
+</main>
+
+<p class="foot">
+  <kbd>space</kbd> play/pause · <kbd>S</kbd> stop · <kbd>←</kbd><kbd>→</kbd> треки · <kbd>F</kbd> перевернуть кассету · <kbd>↑</kbd><kbd>↓</kbd> громкость
+</p>
+<noscript><p class="foot">этому радио нужен включённый JavaScript: без него лента не крутится.</p></noscript>
+
+<script src="script.js"></script>
+</body>
+</html>
