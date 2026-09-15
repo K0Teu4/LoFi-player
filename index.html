@@ -2,17 +2,41 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#8ccfca" media="(prefers-color-scheme: light)">
+<meta name="description" content="ORBITA — десять генеративных треков и ваша сторона, синтезируются в браузере. Работает офлайн.">
+<meta property="og:title" content="ORBITA · Tape Radio">
+<meta property="og:description" content="Десять генеративных треков и ваша сторона — синтезируются в браузере в реальном времени">
+<meta property="og:type" content="website">
+<meta property="og:image" content="icon.svg">
+<meta name="twitter:card" content="summary">
 <title>ORBITA</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%BC%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="mask-icon" href="icon.svg" color="#8ccfca">
+<link rel="apple-touch-icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Manrope:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="stylesheet" href="style.css?v=5">
+<script>
+(function(){
+  var http=location.protocol==='http:'||location.protocol==='https:';
+  if(!http)return;
+  var l=document.createElement('link');
+  l.rel='manifest';
+  l.href='manifest.json';
+  document.head.appendChild(l);
+  if('serviceWorker' in navigator){
+    window.addEventListener('load',function(){
+      navigator.serviceWorker.register('./sw.js').catch(function(){});
+    });
+  }
+})();
+</script>
 </head>
 <body data-eng="tape">
-<div class="glow"></div>
-<div class="rain" id="rain"></div>
+<div class="glow" aria-hidden="true"></div>
+<div class="rain" id="rain" aria-hidden="true"></div>
 
 <main class="table" id="table">
   <svg class="phones obj" id="phones" viewBox="0 0 260 230" aria-hidden="true">
@@ -26,39 +50,39 @@
     <rect x="126" y="212" width="16" height="10" rx="3" fill="#0b1a30"/>
   </svg>
 
-  <section class="walkman obj" id="walkman">
+  <section class="walkman obj" id="walkman" aria-label="Кассетный плеер ORBITA">
     <span class="screw s1"></span>
     <span class="screw s2"></span>
     <div class="top">
-      <div class="play-hint hidden" id="playHint">нажмите play</div>
+      <div class="play-hint hidden" id="playHint" role="tooltip">нажмите play</div>
       <button type="button" class="btn play" id="playBtn" title="play / pause (пробел)">
-        <svg class="ic-play" viewBox="0 0 12 12"><path d="M2 1l9 5-9 5z"/></svg>
-        <svg class="ic-pause" viewBox="0 0 12 12"><path d="M2 1h3v10H2zM7 1h3v10H7z"/></svg>
+        <svg class="ic-play" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z"/></svg>
+        <svg class="ic-pause" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1h3v10H2zM7 1h3v10H7z"/></svg>
         <span class="lbl">PLAY</span>
       </button>
       <button type="button" class="btn" id="stopBtn" title="stop (S)">
-        <svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" rx="1"/></svg>
+        <svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="2" width="8" height="8" rx="1"/></svg>
         <span class="lbl">STOP</span>
       </button>
       <button type="button" class="btn" id="rewBtn" title="предыдущая кассета (←)">
-        <svg viewBox="0 0 12 12"><path d="M6 6l5-4v8zM1 6l5-4v8z"/></svg>
+        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 6l5-4v8zM1 6l5-4v8z"/></svg>
         <span class="lbl">REW</span>
       </button>
       <button type="button" class="btn" id="ffBtn" title="следующая кассета (→)">
-        <svg viewBox="0 0 12 12"><path d="M6 6L1 2v8zM11 6L6 2v8z"/></svg>
+        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 6L1 2v8zM11 6L6 2v8z"/></svg>
         <span class="lbl">FF</span>
       </button>
-      <button type="button" class="btn rec" id="recBtn" title="записать свою сторону">
-        <svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="4"/></svg>
+      <button type="button" class="btn rec" id="recBtn" title="записать свою сторону (студия)">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4"/></svg>
         <span class="lbl">REC</span>
       </button>
-      <div class="jack"></div>
+      <div class="jack" aria-hidden="true"></div>
     </div>
 
     <div class="body">
       <div class="face">
         <div class="logo">ORBITA</div>
-        <div class="lcd">
+        <div class="lcd" aria-live="polite">
           <span id="lcdNum">01</span>
           <span class="t" id="lcdTitle">NIGHT BUS</span>
           <span class="tm" id="lcdTime">00:00</span>
@@ -73,7 +97,7 @@
               </div>
               <div class="wells">
                 <div class="well">
-                  <svg class="reel" id="reelL" viewBox="0 0 100 100">
+                  <svg class="reel" id="reelL" viewBox="0 0 100 100" aria-hidden="true">
                     <circle class="pack" cx="50" cy="50" r="47"/>
                     <circle class="reel-body" cx="50" cy="50" r="34"/>
                     <circle class="ring" cx="50" cy="50" r="27"/>
@@ -86,7 +110,7 @@
                   </svg>
                 </div>
                 <div class="well">
-                  <svg class="reel" id="reelR" viewBox="0 0 100 100">
+                  <svg class="reel" id="reelR" viewBox="0 0 100 100" aria-hidden="true">
                     <circle class="pack pack-sm" cx="50" cy="50" r="40"/>
                     <circle class="reel-body" cx="50" cy="50" r="34"/>
                     <circle class="ring" cx="50" cy="50" r="27"/>
@@ -101,21 +125,21 @@
               </div>
             </div>
           </div>
-          <div class="led" id="led"></div>
+          <div class="led" id="led" aria-hidden="true"></div>
         </div>
         <div class="counter-row">
-          <span class="counter" id="counter"></span>
+          <span class="counter" id="counter" aria-hidden="true"></span>
           <span class="hint">время на сайте</span>
         </div>
-        <div class="spectrum" id="spectrum"></div>
+        <div class="spectrum" id="spectrum" aria-hidden="true"></div>
         <div class="vol-row"><label for="vol">VOL</label> <input type="range" id="vol" min="0" max="100" value="70" title="громкость"></div>
         <div class="logo wm">TAPE RADIO · №3</div>
       </div>
-      <div class="side"></div>
+      <div class="side" aria-hidden="true"></div>
     </div>
   </section>
 
-  <aside class="jcard obj" id="jcard">
+  <aside class="jcard obj" id="jcard" aria-label="Вкладыш с информацией о плеере">
     <h1>ORBITA</h1>
     <p class="tag">десять треков, синтезированных в браузере</p>
     <div class="np">
@@ -132,21 +156,21 @@
       <li>кассеты на столе: кликните любую или перетащите к окну плеера; на телефоне — касание</li>
       <li>плеер, наушники и этот вкладыш можно перетаскивать мышью</li>
       <li>двойной клик по пустому месту стола пересыпает кассеты заново</li>
-      <li>кнопка REC — запишите свою сторону: аккомпанемент и пять пэдов пентатоники</li>
-      <li>клавиши: пробел — play / pause, S — stop, стрелки и 1–9, 0 — кассеты</li>
+      <li>кнопка REC — запишите свою сторону: аккомпанемент, пэды пентатоники и сетка нот</li>
+      <li>клавиши: пробел — play / pause, S — stop, стрелки и 1–9, 0 — кассеты, Esc — закрыть студию</li>
     </ul>
-    <p class="status" id="status" role="status"></p>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
   </aside>
 
-  <div class="spots" id="spots"></div>
+  <div class="spots" id="spots" aria-label="Стол с кассетами"></div>
 
-  <p class="foot">
+  <p class="foot" id="foot">
     <kbd>space</kbd> play / pause · <kbd>S</kbd> stop · <kbd>←</kbd><kbd>→</kbd> и <kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd> кассеты · двойной клик по столу — пересыпать
   </p>
 </main>
 
 <noscript><p class="foot">для работы плеера нужен включённый JavaScript.</p></noscript>
 
-<script src="script.js?v=2"></script>
+<script src="script.js?v=5"></script>
 </body>
 </html>

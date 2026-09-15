@@ -1,0 +1,21 @@
+{
+  "name": "ORBITA · Tape Radio",
+  "short_name": "ORBITA",
+  "description": "Десять генеративных треков и ваша сторона — синтезируются в браузере в реальном времени",
+  "start_url": "/LoFi-player/",
+  "scope": "/LoFi-player/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#8ccfca",
+  "theme_color": "#8ccfca",
+  "lang": "ru-RU",
+  "categories": ["entertainment", "music"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}

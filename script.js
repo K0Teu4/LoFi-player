@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 
-var QUAL={m7:[0,3,7,10],maj7:[0,4,7,11],d7:[0,4,7,10],m9:[0,3,7,10,14],m6:[0,4,7,9]};
+var QUAL={m7:[0,3,7,10],maj7:[0,4,7,11],d7:[0,4,7,10],m9:[0,3,7,10,14],m6:[0,4,7,9],min:[0,3,7,10],maj:[0,4,7,11]};
 var ENG_NAME={tape:'TAPE',piano:'PIANO',chip:'8-BIT',dub:'DUB',wave:'WAVE',bossa:'BOSSA',box:'BOX',phonk:'PHONK',jazz:'JAZZ',techno:'TECHNO',user:'MY SIDE'};
 var PENT={min:[0,3,5,7,10],maj:[0,4,7,9,12]};
 var ROOTS=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
@@ -71,7 +71,7 @@ var POS=[
  {x:40,y:62,r:4}
 ];
 function mfreq(m){return 440*Math.pow(2,(m-69)/12);}
-function chordNotes(root,q){return QUAL[q].map(function(iv){return root+iv;});}
+function chordNotes(root,q){var iv=QUAL[q]||QUAL.m7;return iv.map(function(x){return root+x;});}
 function parseDur(s){var p=s.split(':');return parseInt(p[0],10)*60+parseInt(p[1],10);}
 function num(i){return String(i+1).padStart(2,'0');}
 function mobile(){return window.matchMedia('(max-width:1080px)').matches;}
@@ -86,7 +86,7 @@ function loadDesk(){
 var saved=loadDesk();
 if(saved&&saved.user&&saved.user.cells){
   TRACKS.push({
-    title:'my side',engine:'user',base:saved.user.base||'tape',
+    title:saved.user.title||'my side',engine:'user',base:saved.user.base||'tape',
     root:saved.user.root||57,qual:saved.user.qual||'min',
     bpm:saved.user.bpm||90,swing:0,cutoff:3200,hiss:.01,dly:.3,dfb:.25,dur:'01:36',
     cells:saved.user.cells,prog:[],bass:[],mel:[],drums:null
@@ -110,6 +110,34 @@ var els={
 };
 function setStatus(t){els.status.textContent=t;}
 window.addEventListener('error',function(ev){setStatus('ошибка: '+ev.message);});
+
+var installPrompt=null;
+var installBtn=document.createElement('button');
+installBtn.className='install';
+installBtn.textContent='УСТАНОВИТЬ';
+installBtn.title='установить как приложение';
+installBtn.setAttribute('aria-label','Установить ORBITA как приложение');
+installBtn.addEventListener('click',function(){
+  if(!installPrompt)return;
+  installPrompt.prompt();
+  installPrompt.userChoice.finally(function(){installPrompt=null;installBtn.classList.remove('show');});
+});
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();
+  installPrompt=e;
+  installBtn.classList.add('show');
+  els.table.appendChild(installBtn);
+});
+var offlineBadge=document.createElement('div');
+offlineBadge.className='offline';
+offlineBadge.textContent='OFFLINE · КЭШ';
+function refreshOffline(){
+  offlineBadge.classList.toggle('show',!navigator.onLine);
+  if(!navigator.onLine&&offlineBadge.parentNode!==els.table){els.table.appendChild(offlineBadge);}
+}
+window.addEventListener('online',refreshOffline);
+window.addEventListener('offline',refreshOffline);
+refreshOffline();
 
 var bars=[];
 (function(){
@@ -228,6 +256,7 @@ function buildSpot(i){
   b.className='box';
   b.dataset.eng=tr.engine;
   b.title=tr.title;
+  b.setAttribute('aria-label','Кассета '+num(i)+': '+tr.title);
   var rl=document.createElement('span');rl.className='bx-reel l';
   var rr=document.createElement('span');rr.className='bx-reel r';
   var lab=document.createElement('span');lab.className='bx-label';
@@ -401,6 +430,7 @@ function saveDesk(){
     var userData=null;
     if(USER_IDX>-1&&TRACKS[USER_IDX].cells){
       userData={
+        title:TRACKS[USER_IDX].title,
         base:TRACKS[USER_IDX].base,root:TRACKS[USER_IDX].root,
         qual:TRACKS[USER_IDX].qual,bpm:TRACKS[USER_IDX].bpm,
         cells:TRACKS[USER_IDX].cells
@@ -533,6 +563,17 @@ function resumeBuses(){
   tapeBus.gain.setTargetAtTime(1,t,.05);
   fxBus.gain.setTargetAtTime(1,t,.05);
   fbGain.gain.setTargetAtTime(TRACKS[cur].dfb,t,.05);
+}
+function resumeBusesFixed(fb){
+  if(!audioReady)return;
+  var t=ctx.currentTime;
+  tapeBus.gain.setTargetAtTime(1,t,.05);
+  fxBus.gain.setTargetAtTime(1,t,.05);
+  fbGain.gain.setTargetAtTime(fb,t,.05);
+}
+function ensureStudioBuses(){
+  if(!audioReady)return;
+  resumeBusesFixed(.25);
 }
 function startNoise(){
   var tr=TRACKS[cur];
@@ -874,6 +915,12 @@ function melVoiceFor(b,note,t,len){
   else if(b==='techno'){chipVoice(note,t,len,.05);}
   else{pianoNote(note,t,len,.3);}
 }
+function auditionNote(idx){
+  if(!ensureAudio())return;
+  if(ctx.state==='suspended'){ctx.resume();}
+  ensureStudioBuses();
+  melVoiceFor(rec.base,rec.root+PENT[rec.qual][idx],ctx.currentTime,stepDurRec()*3);
+}
 function playBaseDrums(b,s,t,root,qual){
   var ch=chordNotes(root,qual);
   if(b==='tape'){
@@ -1051,175 +1098,331 @@ function tickScheduler(){
   }
 }
 
-var rec={active:false,base:'tape',root:57,qual:'min',bpm:90,cells:[],timer:null,next:0,step:0};
-var studio=null,recBtnState=null;
+var rec={mode:'off',arm:false,base:'tape',root:57,qual:'min',bpm:90,cells:[],timer:null,next:0,loopStep:0,t0:0};
+var studio=null,gridCells=[],gridLabs=[],padEls=[],stUI={};
+function stepDurRec(){return 60/rec.bpm/4;}
+function cellAt(s,i){
+  for(var k=0;k<rec.cells.length;k++){
+    if(rec.cells[k].s===s&&rec.cells[k].i===i){return k;}
+  }
+  return -1;
+}
+function refreshGrid(){
+  for(var i=0;i<5;i++){
+    for(var s=0;s<32;s++){
+      gridCells[i][s].classList.toggle('on',cellAt(s,i)>-1);
+    }
+  }
+}
+function flashCell(i,s){
+  var c=gridCells[i][s];
+  c.classList.add('flash');
+  setTimeout(function(){c.classList.remove('flash');},160);
+}
+function padNames(){
+  for(var i=0;i<5;i++){
+    var name=ROOTS[(rec.root-48+PENT[rec.qual][i])%12];
+    padEls[i].querySelector('span').textContent=name;
+    gridLabs[i].textContent=name;
+  }
+}
+function syncStudioChips(){
+  stUI.eng.querySelectorAll('.st-chip').forEach(function(c){
+    c.classList.toggle('on',c.dataset.k===rec.base);
+  });
+  stUI.root.querySelectorAll('.st-chip').forEach(function(c){
+    c.classList.toggle('on',Number(c.dataset.k)===rec.root);
+  });
+  stUI.qual.querySelectorAll('.st-chip').forEach(function(c){
+    c.classList.toggle('on',c.dataset.k===rec.qual);
+  });
+  stUI.bpm.value=rec.bpm;
+  stUI.bpmVal.textContent=rec.bpm+' bpm';
+  stUI.title.value=(USER_IDX>-1&&TRACKS[USER_IDX].engine==='user')?TRACKS[USER_IDX].title:'my side';
+}
+function syncStudioTransport(){
+  var looping=rec.mode==='play'||rec.mode==='rec'||rec.mode==='count';
+  stUI.loop.textContent=looping?'LOOP · СТОП':'LOOP · СЛУШАТЬ';
+  stUI.recBtn.textContent=rec.mode==='rec'?'REC · СТОП':(rec.mode==='count'?'REC · ОТМЕНА':'REC · ЗАПИСЬ');
+  stUI.count.textContent=rec.mode==='count'?'счётчик…':(rec.mode==='rec'?'идёт запись':(rec.arm?'rec с нового такта':''));
+  stUI.undo.textContent='UNDO ('+rec.cells.length+')';
+  els.rec.classList.toggle('on',rec.mode==='rec'||rec.mode==='count');
+}
+function recStopTransport(){
+  rec.mode='off';
+  rec.arm=false;
+  if(rec.timer){clearInterval(rec.timer);rec.timer=null;}
+  haltBuses();
+  clearHead();
+  syncStudioTransport();
+}
+function recStart(mode){
+  if(!ensureAudio())return;
+  if(ctx.state==='suspended'){ctx.resume();}
+  rec.mode=mode;
+  rec.arm=false;
+  rec.loopStep=0;
+  rec.t0=ctx.currentTime+.15;
+  rec.next=rec.t0;
+  resumeBusesFixed(.25);
+  if(rec.timer){clearInterval(rec.timer);}
+  rec.timer=setInterval(recTick,30);
+  syncStudioTransport();
+  setStatus(mode==='count'?'счётчик · и запись':'петля играет · правьте сетку и пэды');
+}
+function recTick(){
+  if(!audioReady)return;
+  var sd=stepDurRec();
+  while(rec.next<ctx.currentTime+.15){
+    var t=rec.next;
+    var s=rec.loopStep%16;
+    var pos=(Math.floor(rec.loopStep/16)%2)*16+s;
+    if(rec.mode==='count'){
+      if(s%4===0){rim(t,.3);hat(t,.05,false);}
+    }else{
+      if(s===0){
+        pad(chordNotes(rec.root,rec.qual),t,sd*16*.98,false);
+        bassNote(rec.root-12,t,sd*6);
+      }
+      if(s===8){bassNote(rec.root-12,t,sd*4);}
+      playBaseDrums(rec.base,s,t,rec.root,rec.qual);
+      rec.cells.forEach(function(c){
+        if(c.s===pos){melVoiceFor(rec.base,rec.root+PENT[rec.qual][c.i],t,sd*3);}
+      });
+    }
+    rec.loopStep++;
+    rec.next+=sd;
+    if(rec.mode==='count'&&rec.loopStep===16){
+      rec.mode='rec';
+      rec.loopStep=0;
+      rec.t0=rec.next;
+      syncStudioTransport();
+      setStatus('идёт запись · играйте на пэдах');
+    }
+    if(rec.mode==='play'&&rec.arm&&s===15){
+      rec.mode='rec';
+      rec.loopStep=0;
+      rec.t0=rec.next;
+      rec.arm=false;
+      syncStudioTransport();
+      setStatus('идёт запись · играйте на пэдах');
+    }
+  }
+}
+var headCol=-1;
+function clearHead(){
+  if(headCol<0)return;
+  for(var i=0;i<5;i++){gridCells[i][headCol].classList.remove('head');}
+  headCol=-1;
+}
 function buildStudio(){
   studio=document.createElement('div');
   studio.className='studio';
+  studio.setAttribute('role','dialog');
+  studio.setAttribute('aria-modal','true');
+  studio.setAttribute('aria-label','Студия записи своей стороны');
   var card=document.createElement('div');
   card.className='studio-card';
   card.innerHTML=
    '<h2>STUDIO · MY SIDE</h2>'+
-   '<p class="st-sub">выберите аккомпанемент, нажмите REC и наигрывайте мелодию на пэдах: всё попадёт на вашу кассету</p>'+
+   '<p class="st-sub">петля-аккомпанемент плюс ваша мелодия: слушайте луп, включайте REC после счётчика и играйте на пэдах или кликайте по сетке нот — каждая нота озвучивается сразу</p>'+
+   '<input class="st-title" id="stTitle" maxlength="18" placeholder="название стороны">'+
    '<div class="st-cap">АКОМПАНЕМЕНТ</div><div class="st-row" id="stEng"></div>'+
    '<div class="st-cap">ТОНАЛЬНОСТЬ</div><div class="st-row" id="stRoot"></div>'+
    '<div class="st-row" id="stQual"></div>'+
    '<div class="st-cap">ТЕМП</div><div class="st-bpm"><input type="range" id="stBpm" min="60" max="140" value="90"><span id="stBpmVal">90 bpm</span></div>'+
+   '<div class="st-cap">СЕТКА НОТ · 2 ТАКТА</div><div class="st-grid" id="stGrid"></div>'+
    '<div class="st-cap">ПЭДЫ ПЕНТАТОНИКИ</div><div class="pads" id="stPads"></div>'+
+   '<div class="st-transport">'+
+     '<button class="st-action" id="stLoop">LOOP · СЛУШАТЬ</button>'+
+     '<button class="st-action red" id="stRec">REC · ЗАПИСЬ</button>'+
+     '<span class="st-count" id="stCount"></span>'+
+   '</div>'+
    '<div class="st-actions">'+
-     '<button class="st-action red" id="stRec">REC · СТАРТ</button>'+
+     '<button class="st-action" id="stUndo">UNDO (0)</button>'+
      '<button class="st-action" id="stSave">СОХРАНИТЬ СТОРОНУ</button>'+
      '<button class="st-action ghost" id="stClear">ОЧИСТИТЬ</button>'+
      '<button class="st-action ghost" id="stDel">УДАЛИТЬ MY SIDE</button>'+
-     '<button class="st-action ghost" id="stClose">ЗАКРЫТЬ</button>'+
+     '<button class="st-action ghost" id="stClose">ЗАКРЫТЬ (ESC)</button>'+
    '</div>';
   studio.appendChild(card);
   document.body.appendChild(studio);
-  var engBox=card.querySelector('#stEng');
+  stUI.eng=card.querySelector('#stEng');
+  stUI.root=card.querySelector('#stRoot');
+  stUI.qual=card.querySelector('#stQual');
+  stUI.bpm=card.querySelector('#stBpm');
+  stUI.bpmVal=card.querySelector('#stBpmVal');
+  stUI.title=card.querySelector('#stTitle');
+  stUI.loop=card.querySelector('#stLoop');
+  stUI.recBtn=card.querySelector('#stRec');
+  stUI.count=card.querySelector('#stCount');
+  stUI.undo=card.querySelector('#stUndo');
   Object.keys(ENG_NAME).forEach(function(k){
     if(k==='user')return;
     var c=document.createElement('button');
     c.type='button';c.className='st-chip';c.textContent=ENG_NAME[k];c.dataset.k=k;
     c.addEventListener('click',function(){
       rec.base=k;
-      engBox.querySelectorAll('.st-chip').forEach(function(x){x.classList.toggle('on',x===c);});
+      syncStudioChips();
     });
-    engBox.appendChild(c);
-    if(k===rec.base){c.classList.add('on');}
+    stUI.eng.appendChild(c);
   });
-  var rootBox=card.querySelector('#stRoot');
   ROOTS.forEach(function(name,ix){
     var c=document.createElement('button');
-    c.type='button';c.className='st-chip';c.textContent=name;
+    c.type='button';c.className='st-chip';c.textContent=name;c.dataset.k=String(48+ix);
     c.addEventListener('click',function(){
       rec.root=48+ix;
-      rootBox.querySelectorAll('.st-chip').forEach(function(x){x.classList.toggle('on',x===c);});
+      syncStudioChips();
+      padNames();
     });
-    rootBox.appendChild(c);
-    if(48+ix===rec.root){c.classList.add('on');}
+    stUI.root.appendChild(c);
   });
-  var qualBox=card.querySelector('#stQual');
   [['min','МИНОР'],['maj','МАЖОР']].forEach(function(q){
     var c=document.createElement('button');
-    c.type='button';c.className='st-chip';c.textContent=q[1];
+    c.type='button';c.className='st-chip';c.textContent=q[1];c.dataset.k=q[0];
     c.addEventListener('click',function(){
       rec.qual=q[0];
-      qualBox.querySelectorAll('.st-chip').forEach(function(x){x.classList.toggle('on',x===c);});
+      syncStudioChips();
+      padNames();
     });
-    qualBox.appendChild(c);
-    if(q[0]===rec.qual){c.classList.add('on');}
+    stUI.qual.appendChild(c);
   });
-  var bpmIn=card.querySelector('#stBpm');
-  var bpmVal=card.querySelector('#stBpmVal');
-  bpmIn.addEventListener('input',function(){
-    rec.bpm=Number(bpmIn.value);
-    bpmVal.textContent=rec.bpm+' bpm';
+  stUI.bpm.addEventListener('input',function(){
+    rec.bpm=Number(stUI.bpm.value);
+    stUI.bpmVal.textContent=rec.bpm+' bpm';
   });
-  var padBox=card.querySelector('#stPads');
-  for(var i=0;i<5;i++){
+  var gridBox=card.querySelector('#stGrid');
+  for(var i=4;i>=0;i--){
     (function(idx){
-      var p=document.createElement('button');
-      p.type='button';p.className='pad';p.textContent=idx+1;
-      p.addEventListener('pointerdown',function(){
-        if(!audioReady&&!ensureAudio())return;
-        if(ctx.state==='suspended'){ctx.resume();}
-        var note=rec.root+PENT[rec.qual][idx];
-        melVoiceFor(rec.base,note,ctx.currentTime,stepDurRec()*3);
-        if(rec.active){
-          var s=Math.floor((ctx.currentTime-rec.t0)/stepDurRec())%32;
-          rec.cells.push({s:s,i:idx});
-        }
-      });
-      padBox.appendChild(p);
+      var line=document.createElement('div');
+      line.className='st-rowline';
+      var lab=document.createElement('span');
+      lab.className='lab';
+      line.appendChild(lab);
+      gridLabs[idx]=lab;
+      gridCells[idx]=[];
+      for(var s=0;s<32;s++){
+        (function(ss){
+          var c=document.createElement('button');
+          c.type='button';
+          c.className='st-cell'+(ss%4===0?' b4':'');
+          c.setAttribute('aria-label','нота ряда '+(idx+1)+' на шаге '+(ss+1));
+          c.addEventListener('click',function(){
+            var k=cellAt(ss,idx);
+            if(k>-1){
+              rec.cells.splice(k,1);
+            }else{
+              rec.cells.push({s:ss,i:idx});
+              auditionNote(idx);
+              flashCell(idx,ss);
+            }
+            refreshGrid();
+            syncStudioTransport();
+          });
+          line.appendChild(c);
+          gridCells[idx][ss]=c;
+        })(s);
+      }
+      gridBox.appendChild(line);
     })(i);
   }
-  card.querySelector('#stRec').addEventListener('click',function(){
-    if(!ensureAudio())return;
-    if(ctx.state==='suspended'){ctx.resume();}
-    if(rec.active){
-      rec.active=false;
-      clearInterval(rec.timer);rec.timer=null;
-      haltBuses();
-      els.rec.classList.remove('on');
-      card.querySelector('#stRec').textContent='REC · СТАРТ';
-      setStatus('запись остановлена · нот: '+rec.cells.length);
-    }else{
-      rec.cells=[];
-      rec.active=true;
-      rec.step=0;
-      rec.next=ctx.currentTime+.15;
-      rec.t0=rec.next;
-      resumeBusesFor(rec);
-      rec.timer=setInterval(recTick,30);
-      els.rec.classList.add('on');
-      card.querySelector('#stRec').textContent='REC · СТОП';
-      setStatus('запись · играйте на пэдах');
-    }
+  var padBox=card.querySelector('#stPads');
+  for(var p=0;p<5;p++){
+    (function(idx){
+      var b=document.createElement('button');
+      b.type='button';b.className='pad';
+      b.innerHTML='<b>'+(idx+1)+'</b><span></span>';
+      b.addEventListener('pointerdown',function(){
+        var sd=stepDurRec();
+        if(rec.mode==='rec'&&audioReady){
+          var col=Math.floor((ctx.currentTime-rec.t0)/sd)%32;
+          if(col<0){col+=32;}
+          if(cellAt(col,idx)===-1){
+            rec.cells.push({s:col,i:idx});
+            refreshGrid();
+            syncStudioTransport();
+          }
+          flashCell(idx,col);
+        }
+        auditionNote(idx);
+      });
+      padBox.appendChild(b);
+      padEls[idx]=b;
+    })(p);
+  }
+  stUI.loop.addEventListener('click',function(){
+    if(rec.mode==='off'){recStart('play');}
+    else{recStopTransport();setStatus('петля остановлена');}
+  });
+  stUI.recBtn.addEventListener('click',function(){
+    if(rec.mode==='off'){recStart('count');}
+    else if(rec.mode==='count'){recStopTransport();setStatus('запись отменена');}
+    else if(rec.mode==='play'){rec.arm=true;syncStudioTransport();setStatus('rec включится с нового такта');}
+    else{rec.mode='play';syncStudioTransport();setStatus('запись остановлена · петля играет');}
+  });
+  stUI.undo.addEventListener('click',function(){
+    rec.cells.pop();
+    refreshGrid();
+    syncStudioTransport();
+  });
+  card.querySelector('#stClear').addEventListener('click',function(){
+    rec.cells=[];
+    refreshGrid();
+    syncStudioTransport();
+    setStatus('сетка очищена');
   });
   card.querySelector('#stSave').addEventListener('click',function(){
-    if(rec.active){
-      rec.active=false;
-      clearInterval(rec.timer);rec.timer=null;
-      haltBuses();
-      els.rec.classList.remove('on');
-      card.querySelector('#stRec').textContent='REC · СТАРТ';
-    }
+    if(rec.mode!=='off'){recStopTransport();}
     if(!rec.cells.length){
-      setStatus('пусто: сначала наиграйте что-нибудь на пэдах');
+      setStatus('пусто: наиграйте на пэдах или расставьте ноты в сетке');
       return;
     }
     saveUserTrack();
     studio.classList.remove('open');
-    selectTrack(USER_IDX);
-    if(!playing){playTape();}
-    setStatus('сторона записана: my side');
-  });
-  card.querySelector('#stClear').addEventListener('click',function(){
-    rec.cells=[];
-    setStatus('запись очищена');
+    cur=USER_IDX;
+    applyTrackMeta();
+    if(playing){
+      haltPlayback();
+      resumePlayback();
+      setStatus('играет · '+TRACKS[cur].title);
+    }else{
+      playTape();
+    }
+    setStatus('сторона записана: '+TRACKS[cur].title);
   });
   card.querySelector('#stDel').addEventListener('click',function(){
+    if(rec.mode!=='off'){recStopTransport();}
     deleteUserTrack();
     studio.classList.remove('open');
   });
   card.querySelector('#stClose').addEventListener('click',function(){
-    if(rec.active){
-      rec.active=false;
-      clearInterval(rec.timer);rec.timer=null;
-      haltBuses();
-      els.rec.classList.remove('on');
-      card.querySelector('#stRec').textContent='REC · СТАРТ';
-    }
-    studio.classList.remove('open');
+    closeStudio();
   });
 }
-function stepDurRec(){return 60/rec.bpm/4;}
-function resumeBusesFor(r){
-  if(!audioReady)return;
-  var t=ctx.currentTime;
-  tapeBus.gain.setTargetAtTime(1,t,.05);
-  fxBus.gain.setTargetAtTime(1,t,.05);
-  fbGain.gain.setTargetAtTime(.25,t,.05);
-}
-function recTick(){
-  if(!audioReady)return;
-  var sd=stepDurRec();
-  while(rec.next<ctx.currentTime+.15){
-    var s=rec.step%16;
-    var t=rec.next;
-    if(s===0){
-      pad(chordNotes(rec.root,rec.qual),t,sd*16*.98,false);
-      bassNote(rec.root-12,t,sd*6);
-    }
-    if(s===8){bassNote(rec.root-12,t,sd*4);}
-    playBaseDrums(rec.base,s,t,rec.root,rec.qual);
-    rec.next+=sd;
-    rec.step++;
+function openStudio(){
+  if(playing){pauseTape();}
+  if(USER_IDX>-1&&TRACKS[USER_IDX].engine==='user'){
+    var tr=TRACKS[USER_IDX];
+    rec.base=tr.base;rec.root=tr.root;rec.qual=tr.qual;rec.bpm=tr.bpm;
+    rec.cells=tr.cells.slice();
   }
+  refreshGrid();
+  syncStudioChips();
+  padNames();
+  syncStudioTransport();
+  ensureStudioBuses();
+  studio.classList.add('open');
+  setStatus('студия открыта · основная лента на паузе');
+}
+function closeStudio(){
+  if(rec.mode!=='off'){recStopTransport();}
+  studio.classList.remove('open');
+  setStatus(started?(playing?'играет · '+TRACKS[cur].title:'пауза'):'выберите кассету со стола и нажмите play');
 }
 function saveUserTrack(){
+  var title=(stUI.title.value||'').trim()||'my side';
   var data={
-    title:'my side',engine:'user',base:rec.base,root:rec.root,qual:rec.qual,
+    title:title,engine:'user',base:rec.base,root:rec.root,qual:rec.qual,
     bpm:rec.bpm,swing:0,cutoff:3200,hiss:.01,dly:.3,dfb:.25,dur:'01:36',
     cells:rec.cells.slice(),prog:[],bass:[],mel:[],drums:null
   };
@@ -1243,13 +1446,20 @@ function deleteUserTrack(){
   spotEls.splice(USER_IDX,1);
   homes.splice(USER_IDX,1);
   USER_IDX=-1;
+  rec.cells=[];
   saveDesk();
   applyTrackMeta();
   setStatus('сторона my side удалена');
 }
 buildStudio();
 els.rec.addEventListener('click',function(){
-  studio.classList.toggle('open');
+  if(studio.classList.contains('open')){closeStudio();}
+  else{openStudio();}
+});
+document.addEventListener('keydown',function(e){
+  if(e.code==='Escape'&&studio.classList.contains('open')){
+    closeStudio();
+  }
 });
 
 function fmt(sec){
@@ -1402,7 +1612,7 @@ document.addEventListener('keydown',function(e){
   else if(e.code==='ArrowRight'){selectTrack(cur+1);}
   else if(e.code.indexOf('Digit')===0){
     var n=parseInt(e.code.slice(5),10);
-    if(n===0){selectTrack(9);}
+    if(n===0){selectTrack(Math.min(9,TRACKS.length-1));}
     else if(n>=1&&n<=TRACKS.length){selectTrack(n-1);}
   }
   else if(e.code==='ArrowUp'){e.preventDefault();els.vol.value=String(Math.min(100,Number(els.vol.value)+5));applyVol();}
@@ -1441,6 +1651,18 @@ function frame(now){
     }
   }else{
     for(var j=0;j<12;j++){bars[j].style.height='3px';bars[j].classList.remove('lit');}
+  }
+  if(studio&&studio.classList.contains('open')&&audioReady&&rec.mode!=='off'){
+    var sd=stepDurRec();
+    var col=Math.floor((ctx.currentTime-rec.t0)/sd)%32;
+    if(col<0){col+=32;}
+    if(col!==headCol){
+      clearHead();
+      headCol=col;
+      for(var g=0;g<5;g++){gridCells[g][headCol].classList.add('head');}
+    }
+  }else if(headCol>-1&&!(rec.mode!=='off')){
+    clearHead();
   }
   requestAnimationFrame(frame);
 }
