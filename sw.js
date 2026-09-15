@@ -1,12 +1,12 @@
 (function(){
 'use strict';
 
-var CACHE='orbita-v5';
+var CACHE='orbita-v6';
 var APP_SHELL=[
   './',
   './index.html',
-  './style.css?v=5',
-  './script.js?v=5',
+  './style.css?v=6',
+  './script.js?v=6',
   './manifest.json',
   './icon.svg',
   './favicon.svg'
