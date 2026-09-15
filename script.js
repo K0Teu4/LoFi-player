@@ -2,7 +2,9 @@
 'use strict';
 
 var QUAL={m7:[0,3,7,10],maj7:[0,4,7,11],d7:[0,4,7,10],m9:[0,3,7,10,14],m6:[0,4,7,9]};
-var ENG_NAME={tape:'TAPE',piano:'PIANO',chip:'8-BIT',dub:'DUB',wave:'WAVE',bossa:'BOSSA',box:'BOX',phonk:'PHONK',jazz:'JAZZ',techno:'TECHNO'};
+var ENG_NAME={tape:'TAPE',piano:'PIANO',chip:'8-BIT',dub:'DUB',wave:'WAVE',bossa:'BOSSA',box:'BOX',phonk:'PHONK',jazz:'JAZZ',techno:'TECHNO',user:'MY SIDE'};
+var PENT={min:[0,3,5,7,10],maj:[0,4,7,9,12]};
+var ROOTS=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 var TRACKS=[
  {title:'night bus',engine:'tape',bpm:72,swing:.16,cutoff:2400,hiss:.012,dly:.31,dfb:.22,dur:'02:47',
   prog:[[57,'m7'],[53,'maj7'],[60,'maj7'],[55,'d7']],
@@ -65,7 +67,8 @@ var POS=[
  {x:68,y:72,r:-6},
  {x:46,y:80,r:5},
  {x:26,y:82,r:-4},
- {x:4,y:74,r:7}
+ {x:4,y:74,r:7},
+ {x:40,y:62,r:4}
 ];
 function mfreq(m){return 440*Math.pow(2,(m-69)/12);}
 function chordNotes(root,q){return QUAL[q].map(function(iv){return root+iv;});}
@@ -73,10 +76,29 @@ function parseDur(s){var p=s.split(':');return parseInt(p[0],10)*60+parseInt(p[1
 function num(i){return String(i+1).padStart(2,'0');}
 function mobile(){return window.matchMedia('(max-width:1080px)').matches;}
 
+function loadDesk(){
+  try{
+    var raw=localStorage.getItem('orbita-desk');
+    if(!raw)return null;
+    return JSON.parse(raw);
+  }catch(e){return null;}
+}
+var saved=loadDesk();
+if(saved&&saved.user&&saved.user.cells){
+  TRACKS.push({
+    title:'my side',engine:'user',base:saved.user.base||'tape',
+    root:saved.user.root||57,qual:saved.user.qual||'min',
+    bpm:saved.user.bpm||90,swing:0,cutoff:3200,hiss:.01,dly:.3,dfb:.25,dur:'01:36',
+    cells:saved.user.cells,prog:[],bass:[],mel:[],drums:null
+  });
+}
+var USER_IDX=TRACKS.length-1;
+if(TRACKS[USER_IDX].engine!=='user'){USER_IDX=-1;}
+
 function $(s){return document.querySelector(s);}
 var els={
   table:$('#table'),
-  play:$('#playBtn'),stop:$('#stopBtn'),rew:$('#rewBtn'),ff:$('#ffBtn'),
+  play:$('#playBtn'),stop:$('#stopBtn'),rew:$('#rewBtn'),ff:$('#ffBtn'),rec:$('#recBtn'),
   vol:$('#vol'),status:$('#status'),tapeLabel:$('#tapeLabel'),cassette:$('#cassette'),
   cassNum:$('#cassNum'),cassEng:$('#cassEng'),
   lcdNum:$('#lcdNum'),lcdTitle:$('#lcdTitle'),lcdTime:$('#lcdTime'),
@@ -107,7 +129,7 @@ var bars=[];
   }
 })();
 (function(){
-  [els.play,els.stop,els.rew,els.ff].forEach(function(btn){
+  [els.play,els.stop,els.rew,els.ff,els.rec].forEach(function(btn){
     btn.addEventListener('click',function(e){
       var r=btn.getBoundingClientRect();
       var size=Math.max(r.width,r.height);
@@ -133,7 +155,7 @@ var strips=[];
 
 function clampPos(x,y,w,h){
   var W=window.innerWidth,H=window.innerHeight;
-  var minX=70-w,maxX=W-70,minY=46-h,maxY=H-46;
+  var minX=8,maxX=W-w-8,minY=8,maxY=H-h-44;
   var cx=maxX<minX?(W-w)/2:Math.max(minX,Math.min(maxX,x));
   var cy=maxY<minY?(H-h)/2:Math.max(minY,Math.min(maxY,y));
   return {x:cx,y:cy};
@@ -194,85 +216,85 @@ var spotEls=[],homes=[];
 function intersects(a,b){
   return !(a.right<b.left||a.left>b.right||a.bottom<b.top||a.top>b.bottom);
 }
-(function(){
-  TRACKS.forEach(function(tr,i){
-    var spot=document.createElement('div');
-    spot.className='spot';
-    spot.style.left=POS[i].x+'%';
-    spot.style.top=POS[i].y+'%';
-    spot.style.setProperty('--r',POS[i].r+'deg');
-    var b=document.createElement('button');
-    b.type='button';
-    b.className='box';
-    b.dataset.eng=tr.engine;
-    b.title=tr.title;
-    var rl=document.createElement('span');rl.className='bx-reel l';
-    var rr=document.createElement('span');rr.className='bx-reel r';
-    var lab=document.createElement('span');lab.className='bx-label';
-    var n=document.createElement('span');n.className='bx-num';n.textContent=num(i);
-    var t=document.createElement('span');t.className='bx-title';t.textContent=tr.title.toUpperCase();
-    lab.appendChild(n);lab.appendChild(t);
-    var gone=document.createElement('span');gone.className='bx-gone';gone.textContent='В ПЛЕЕРЕ';
-    b.appendChild(rl);b.appendChild(rr);b.appendChild(lab);b.appendChild(gone);
-    spot.appendChild(b);
-    els.spots.appendChild(spot);
-    spotEls.push(spot);
-    var st=null;
-    b.addEventListener('pointerdown',function(e){
-      if(mobile())return;
-      if(spot.classList.contains('active'))return;
-      st={
-        sx:e.clientX,sy:e.clientY,
-        bl:parseFloat(spot.style.left)||0,
-        bt:parseFloat(spot.style.top)||0,
-        drag:false,id:e.pointerId
-      };
-    });
-    window.addEventListener('pointermove',function(e){
-      if(!st||e.pointerId!==st.id)return;
-      var dx=e.clientX-st.sx,dy=e.clientY-st.sy;
-      if(!st.drag&&Math.abs(dx)+Math.abs(dy)<6)return;
-      if(!st.drag){st.drag=true;anyDragged=true;spot.classList.add('lift');}
-      var p=clampPos(st.bl+dx,st.bt+dy,180,110);
-      spot.style.left=p.x+'px';
-      spot.style.top=p.y+'px';
-      els.drop.classList.toggle('drop-hover',intersects(spot.getBoundingClientRect(),els.drop.getBoundingClientRect()));
-    });
-    window.addEventListener('pointerup',function(e){
-      if(!st||e.pointerId!==st.id)return;
-      var wasDrag=st.drag;
-      st=null;
-      var r=spot.getBoundingClientRect();
-      var over=intersects(r,els.drop.getBoundingClientRect());
-      var onPlayer=intersects(r,wrapWalk.getBoundingClientRect());
-      els.drop.classList.remove('drop-hover');
-      spot.classList.remove('lift');
-      if(!wasDrag){
-        selectTrack(i);
-        return;
-      }
-      suppressClick=true;
-      anyDragged=true;
-      if(over){
-        selectTrack(i);
-      }else if(onPlayer&&homes[i]){
-        spot.style.left=homes[i].l+'px';
-        spot.style.top=homes[i].t+'px';
-      }
-      saveDesk();
-    });
-    window.addEventListener('pointercancel',function(){
-      if(!st)return;
-      st=null;
-      els.drop.classList.remove('drop-hover');
-      spot.classList.remove('lift');
-    });
-    b.addEventListener('click',function(){
-      if(suppressClick){suppressClick=false;return;}
-      if(mobile()){selectTrack(i);}
-    });
+function buildSpot(i){
+  var tr=TRACKS[i];
+  var spot=document.createElement('div');
+  spot.className='spot';
+  spot.style.left=POS[i].x+'%';
+  spot.style.top=POS[i].y+'%';
+  spot.style.setProperty('--r',POS[i].r+'deg');
+  var b=document.createElement('button');
+  b.type='button';
+  b.className='box';
+  b.dataset.eng=tr.engine;
+  b.title=tr.title;
+  var rl=document.createElement('span');rl.className='bx-reel l';
+  var rr=document.createElement('span');rr.className='bx-reel r';
+  var lab=document.createElement('span');lab.className='bx-label';
+  var n=document.createElement('span');n.className='bx-num';n.textContent=num(i);
+  var t=document.createElement('span');t.className='bx-title';t.textContent=tr.title.toUpperCase();
+  lab.appendChild(n);lab.appendChild(t);
+  var gone=document.createElement('span');gone.className='bx-gone';gone.textContent='В ПЛЕЕРЕ';
+  b.appendChild(rl);b.appendChild(rr);b.appendChild(lab);b.appendChild(gone);
+  spot.appendChild(b);
+  els.spots.appendChild(spot);
+  spotEls[i]=spot;
+  var st=null;
+  b.addEventListener('pointerdown',function(e){
+    if(mobile())return;
+    if(spot.classList.contains('active'))return;
+    st={
+      sx:e.clientX,sy:e.clientY,
+      bl:parseFloat(spot.style.left)||0,
+      bt:parseFloat(spot.style.top)||0,
+      drag:false,id:e.pointerId
+    };
   });
-})();
+  window.addEventListener('pointermove',function(e){
+    if(!st||e.pointerId!==st.id)return;
+    var dx=e.clientX-st.sx,dy=e.clientY-st.sy;
+    if(!st.drag&&Math.abs(dx)+Math.abs(dy)<6)return;
+    if(!st.drag){st.drag=true;anyDragged=true;spot.classList.add('lift');}
+    var p=clampPos(st.bl+dx,st.bt+dy,180,110);
+    spot.style.left=p.x+'px';
+    spot.style.top=p.y+'px';
+    els.drop.classList.toggle('drop-hover',intersects(spot.getBoundingClientRect(),els.drop.getBoundingClientRect()));
+  });
+  window.addEventListener('pointerup',function(e){
+    if(!st||e.pointerId!==st.id)return;
+    var wasDrag=st.drag;
+    st=null;
+    var r=spot.getBoundingClientRect();
+    var over=intersects(r,els.drop.getBoundingClientRect());
+    var onPlayer=intersects(r,wrapWalk.getBoundingClientRect());
+    els.drop.classList.remove('drop-hover');
+    spot.classList.remove('lift');
+    if(!wasDrag){
+      selectTrack(i);
+      return;
+    }
+    suppressClick=true;
+    anyDragged=true;
+    if(over){
+      selectTrack(i);
+    }else if(onPlayer&&homes[i]){
+      spot.style.left=homes[i].l+'px';
+      spot.style.top=homes[i].t+'px';
+    }
+    saveDesk();
+  });
+  window.addEventListener('pointercancel',function(){
+    if(!st)return;
+    st=null;
+    els.drop.classList.remove('drop-hover');
+    spot.classList.remove('lift');
+  });
+  b.addEventListener('click',function(){
+    if(suppressClick){suppressClick=false;return;}
+    if(mobile()){selectTrack(i);}
+  });
+}
+TRACKS.forEach(function(tr,i){buildSpot(i);});
 
 function grow(r,p){return {l:r.left-p,t:r.top-p,r:r.right+p,b:r.bottom+p};}
 function zoneRects(){
@@ -283,7 +305,6 @@ function zoneRects(){
   ];
 }
 function settleItems(items){
-  var W=window.innerWidth,H=window.innerHeight;
   var zones=zoneRects();
   for(var it=0;it<180;it++){
     var moved=false;
@@ -321,7 +342,7 @@ function applyItems(items){
   homes=items.map(function(a){return {l:a.l,t:a.t};});
 }
 function currentItems(){
-  return spotEls.map(function(sp){
+  return spotEls.filter(Boolean).map(function(sp){
     var r=sp.getBoundingClientRect();
     return {el:sp,l:r.left,t:r.top,w:r.width,h:r.height};
   });
@@ -337,12 +358,12 @@ function initialLayout(){
 }
 function scatter(){
   var W=window.innerWidth,H=window.innerHeight;
-  var items=spotEls.map(function(sp){
+  var items=spotEls.filter(Boolean).map(function(sp){
     var r=sp.getBoundingClientRect();
     return {
       el:sp,
       l:8+Math.random()*Math.max(40,W-r.width-16),
-      t:8+Math.random()*Math.max(40,H-r.height-40),
+      t:8+Math.random()*Math.max(40,H-r.height-60),
       w:r.width,h:r.height
     };
   });
@@ -359,6 +380,7 @@ els.table.addEventListener('dblclick',function(e){
 function clampAll(){
   if(mobile())return;
   spotEls.forEach(function(sp){
+    if(!sp)return;
     var l=parseFloat(sp.style.left),t=parseFloat(sp.style.top);
     if(isNaN(l)||isNaN(t))return;
     var p=clampPos(l,t,180,110);
@@ -376,24 +398,26 @@ function clampAll(){
 
 function saveDesk(){
   try{
+    var userData=null;
+    if(USER_IDX>-1&&TRACKS[USER_IDX].cells){
+      userData={
+        base:TRACKS[USER_IDX].base,root:TRACKS[USER_IDX].root,
+        qual:TRACKS[USER_IDX].qual,bpm:TRACKS[USER_IDX].bpm,
+        cells:TRACKS[USER_IDX].cells
+      };
+    }
     localStorage.setItem('orbita-desk',JSON.stringify({
-      spots:spotEls.map(function(sp){return {l:parseFloat(sp.style.left)||0,t:parseFloat(sp.style.top)||0};}),
+      spots:spotEls.filter(Boolean).map(function(sp){return {l:parseFloat(sp.style.left)||0,t:parseFloat(sp.style.top)||0};}),
       wraps:wraps.map(function(w){return w.style.left===''?null:{l:parseFloat(w.style.left)||0,t:parseFloat(w.style.top)||0};}),
       vol:els.vol.value,
-      cur:cur
+      cur:cur,
+      user:userData
     }));
   }catch(e){}
 }
-function loadDesk(){
-  try{
-    var raw=localStorage.getItem('orbita-desk');
-    if(!raw)return null;
-    return JSON.parse(raw);
-  }catch(e){return null;}
-}
-var saved=loadDesk();
 if(saved&&saved.spots&&saved.spots.length===spotEls.length){
   saved.spots.forEach(function(p,i){
+    if(!spotEls[i])return;
     spotEls[i].style.left=p.l+'px';
     spotEls[i].style.top=p.t+'px';
   });
@@ -449,7 +473,7 @@ function pulseWave(duty){
 function initAudio(){
   var AC=window.AudioContext||window.webkitAudioContext;
   ctx=new AC();
-  CURVES={tape:makeCurve(2.2),piano:makeCurve(1.3),chip:makeChipCurve(),dub:makeCurve(1.8),wave:makeCurve(3),bossa:makeCurve(1.5),box:makeCurve(1.2),phonk:makeCurve(2.5),jazz:makeCurve(1.6),techno:makeCurve(2.8)};
+  CURVES={tape:makeCurve(2.2),piano:makeCurve(1.3),chip:makeChipCurve(),dub:makeCurve(1.8),wave:makeCurve(3),bossa:makeCurve(1.5),box:makeCurve(1.2),phonk:makeCurve(2.5),jazz:makeCurve(1.6),techno:makeCurve(2.8),user:makeCurve(2)};
   pw25=pulseWave(.25);pw50=pulseWave(.5);
   master=ctx.createGain();master.gain.value=volVal();
   var hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=35;
@@ -839,6 +863,54 @@ function beat(){
   els.led.classList.add('beat');
   setTimeout(function(){els.led.classList.remove('beat');},70);
 }
+function melVoiceFor(b,note,t,len){
+  if(b==='tape'){tapeMel(note,t);}
+  else if(b==='dub'){dubMel(note,t);}
+  else if(b==='chip'){chipLead(note,t,len);}
+  else if(b==='wave'){waveLead(note,t,len);}
+  else if(b==='bossa'){nylon(note,t,len,.14);}
+  else if(b==='box'){boxNote(note,t,len,.22);}
+  else if(b==='phonk'){cowbell(note,t);}
+  else if(b==='techno'){chipVoice(note,t,len,.05);}
+  else{pianoNote(note,t,len,.3);}
+}
+function playBaseDrums(b,s,t,root,qual){
+  var ch=chordNotes(root,qual);
+  if(b==='tape'){
+    if(s===0||s===10)kick(t,.85);
+    if(s===4||s===12)snare(t,.45);
+    if(s%2===0)hat(t,.08,false);
+  }else if(b==='chip'){
+    if(s===0||s===8)chipKick(t);
+    if(s===4||s===12)chipSnare(t,.2);
+    if(s%2===0)chipHat(t,.04);
+  }else if(b==='dub'){
+    if(s===8){kick(t,.8);rim(t,.14);}
+    if(s%2===0)hat(t,.045,false);
+    if(s===2||s===6||s===10||s===14)stab(ch,t);
+  }else if(b==='wave'){
+    if(s%4===0)kick(t,.95);
+    if(s%4===2)hat(t,.09,true);
+    trapHat(t,.028);
+  }else if(b==='bossa'){
+    if([0,3,6,10,12].indexOf(s)>-1)rim(t,.09);
+    if(s%2===0)hat(t,.03,false);
+    if(s===3||s===6||s===11||s===14)stab(ch,t);
+  }else if(b==='phonk'){
+    if(s===0||s===10)kick(t,.9);
+    if(s===8)trapSnare(t);
+    trapHat(t,s%4===0?.06:.04);
+  }else if(b==='jazz'){
+    if(s%4===0)brush(t,s%8===4?.07:.045);
+  }else if(b==='techno'){
+    if(s%4===0)kick(t,.95);
+    if(s%4===2)hat(t,.09,true);
+    trapHat(t,.028);
+    technoBass(root-24,t);
+  }else{
+    if(s%4===0)hat(t,.03,false);
+  }
+}
 
 var playing=false,started=false,step=0,bar=0,nextTime=0,timer=null,stepDur=.2,playSec=0;
 var barChord=chordNotes(TRACKS[0].prog[0][0],TRACKS[0].prog[0][1]);
@@ -846,6 +918,23 @@ var barRoot=TRACKS[0].prog[0][0];
 
 function scheduleStep(s,t){
   var tr=TRACKS[cur],eng=tr.engine;
+  if(eng==='user'){
+    var b=tr.base;
+    if(s===0){
+      barRoot=tr.root;barChord=chordNotes(tr.root,tr.qual);
+      pad(barChord,t,stepDur*16*.98,b==='box'||b==='wave');
+      bassNote(tr.root-12,t,stepDur*6);
+    }
+    if(s===8){bassNote(tr.root-12,t,stepDur*4);}
+    playBaseDrums(b,s,t,tr.root,tr.qual);
+    var pos=(bar%2)*16+s;
+    tr.cells.forEach(function(c){
+      if(c.s===pos){
+        melVoiceFor(b,tr.root+PENT[tr.qual][c.i],t,stepDur*3);
+      }
+    });
+    return;
+  }
   if(s===0){
     var pr=tr.prog[bar%tr.prog.length];
     barRoot=pr[0];barChord=chordNotes(pr[0],pr[1]);
@@ -908,14 +997,14 @@ function scheduleStep(s,t){
   }
   if(eng==='dub'&&(s===2||s===6||s===10||s===14)){stab(barChord,t);}
   if(eng==='bossa'&&tr.drums){
-    if(tr.drums.clave.indexOf(s)>-1){rim(t,.09);}
-    if(tr.drums.stab.indexOf(s)>-1){stab(barChord,t);}
-    if(s%2===0){hat(t,.03,false);}
+    if(tr.drums.clave.indexOf(s)>-1)rim(t,.09);
+    if(tr.drums.stab.indexOf(s)>-1)stab(barChord,t);
+    if(s%2===0)hat(t,.03,false);
     return;
   }
   if(eng==='jazz'&&tr.drums){
-    if(tr.drums.brush.indexOf(s)>-1){brush(t,s%8===4?.07:.045);}
-    if(s===14&&bar%2===1){brush(t,.06);}
+    if(tr.drums.brush.indexOf(s)>-1)brush(t,s%8===4?.07:.045);
+    if(s===14&&bar%2===1)brush(t,.06);
     return;
   }
   if(!tr.drums)return;
@@ -940,16 +1029,16 @@ function scheduleStep(s,t){
   }
   if(d.open&&d.open.indexOf(s)>-1&&(eng==='dub'?bar%2===1:true)){hat(t,.1,true);}
   if(eng==='chip'){
-    if(d.hat==='eighths'&&s%2===0){chipHat(t,.04);}
+    if(d.hat==='eighths'&&s%2===0)chipHat(t,.04);
   }else if(eng==='wave'){
-    if(d.hat==='offbeats'&&s%4===2){chipHat(t,.05);}
+    if(d.hat==='offbeats'&&s%4===2)chipHat(t,.05);
   }else if(eng==='dub'){
-    if(s%2===0){hat(t,.045,false);}
+    if(s%2===0)hat(t,.045,false);
   }else if(eng==='phonk'){
     trapHat(t,s%4===0?.06:.04);
   }else{
-    if(d.hat==='eighths'&&s%2===0&&Math.random()>.1){hat(t,.08+Math.random()*.06,false);}
-    if(d.hat==='sixteenths'){hat(t,.035+Math.random()*.03,false);}
+    if(d.hat==='eighths'&&s%2===0&&Math.random()>.1)hat(t,.08+Math.random()*.06,false);
+    if(d.hat==='sixteenths')hat(t,.035+Math.random()*.03,false);
   }
 }
 function tickScheduler(){
@@ -961,6 +1050,207 @@ function tickScheduler(){
     if(step===16){step=0;bar++;}
   }
 }
+
+var rec={active:false,base:'tape',root:57,qual:'min',bpm:90,cells:[],timer:null,next:0,step:0};
+var studio=null,recBtnState=null;
+function buildStudio(){
+  studio=document.createElement('div');
+  studio.className='studio';
+  var card=document.createElement('div');
+  card.className='studio-card';
+  card.innerHTML=
+   '<h2>STUDIO · MY SIDE</h2>'+
+   '<p class="st-sub">выберите аккомпанемент, нажмите REC и наигрывайте мелодию на пэдах: всё попадёт на вашу кассету</p>'+
+   '<div class="st-cap">АКОМПАНЕМЕНТ</div><div class="st-row" id="stEng"></div>'+
+   '<div class="st-cap">ТОНАЛЬНОСТЬ</div><div class="st-row" id="stRoot"></div>'+
+   '<div class="st-row" id="stQual"></div>'+
+   '<div class="st-cap">ТЕМП</div><div class="st-bpm"><input type="range" id="stBpm" min="60" max="140" value="90"><span id="stBpmVal">90 bpm</span></div>'+
+   '<div class="st-cap">ПЭДЫ ПЕНТАТОНИКИ</div><div class="pads" id="stPads"></div>'+
+   '<div class="st-actions">'+
+     '<button class="st-action red" id="stRec">REC · СТАРТ</button>'+
+     '<button class="st-action" id="stSave">СОХРАНИТЬ СТОРОНУ</button>'+
+     '<button class="st-action ghost" id="stClear">ОЧИСТИТЬ</button>'+
+     '<button class="st-action ghost" id="stDel">УДАЛИТЬ MY SIDE</button>'+
+     '<button class="st-action ghost" id="stClose">ЗАКРЫТЬ</button>'+
+   '</div>';
+  studio.appendChild(card);
+  document.body.appendChild(studio);
+  var engBox=card.querySelector('#stEng');
+  Object.keys(ENG_NAME).forEach(function(k){
+    if(k==='user')return;
+    var c=document.createElement('button');
+    c.type='button';c.className='st-chip';c.textContent=ENG_NAME[k];c.dataset.k=k;
+    c.addEventListener('click',function(){
+      rec.base=k;
+      engBox.querySelectorAll('.st-chip').forEach(function(x){x.classList.toggle('on',x===c);});
+    });
+    engBox.appendChild(c);
+    if(k===rec.base){c.classList.add('on');}
+  });
+  var rootBox=card.querySelector('#stRoot');
+  ROOTS.forEach(function(name,ix){
+    var c=document.createElement('button');
+    c.type='button';c.className='st-chip';c.textContent=name;
+    c.addEventListener('click',function(){
+      rec.root=48+ix;
+      rootBox.querySelectorAll('.st-chip').forEach(function(x){x.classList.toggle('on',x===c);});
+    });
+    rootBox.appendChild(c);
+    if(48+ix===rec.root){c.classList.add('on');}
+  });
+  var qualBox=card.querySelector('#stQual');
+  [['min','МИНОР'],['maj','МАЖОР']].forEach(function(q){
+    var c=document.createElement('button');
+    c.type='button';c.className='st-chip';c.textContent=q[1];
+    c.addEventListener('click',function(){
+      rec.qual=q[0];
+      qualBox.querySelectorAll('.st-chip').forEach(function(x){x.classList.toggle('on',x===c);});
+    });
+    qualBox.appendChild(c);
+    if(q[0]===rec.qual){c.classList.add('on');}
+  });
+  var bpmIn=card.querySelector('#stBpm');
+  var bpmVal=card.querySelector('#stBpmVal');
+  bpmIn.addEventListener('input',function(){
+    rec.bpm=Number(bpmIn.value);
+    bpmVal.textContent=rec.bpm+' bpm';
+  });
+  var padBox=card.querySelector('#stPads');
+  for(var i=0;i<5;i++){
+    (function(idx){
+      var p=document.createElement('button');
+      p.type='button';p.className='pad';p.textContent=idx+1;
+      p.addEventListener('pointerdown',function(){
+        if(!audioReady&&!ensureAudio())return;
+        if(ctx.state==='suspended'){ctx.resume();}
+        var note=rec.root+PENT[rec.qual][idx];
+        melVoiceFor(rec.base,note,ctx.currentTime,stepDurRec()*3);
+        if(rec.active){
+          var s=Math.floor((ctx.currentTime-rec.t0)/stepDurRec())%32;
+          rec.cells.push({s:s,i:idx});
+        }
+      });
+      padBox.appendChild(p);
+    })(i);
+  }
+  card.querySelector('#stRec').addEventListener('click',function(){
+    if(!ensureAudio())return;
+    if(ctx.state==='suspended'){ctx.resume();}
+    if(rec.active){
+      rec.active=false;
+      clearInterval(rec.timer);rec.timer=null;
+      haltBuses();
+      els.rec.classList.remove('on');
+      card.querySelector('#stRec').textContent='REC · СТАРТ';
+      setStatus('запись остановлена · нот: '+rec.cells.length);
+    }else{
+      rec.cells=[];
+      rec.active=true;
+      rec.step=0;
+      rec.next=ctx.currentTime+.15;
+      rec.t0=rec.next;
+      resumeBusesFor(rec);
+      rec.timer=setInterval(recTick,30);
+      els.rec.classList.add('on');
+      card.querySelector('#stRec').textContent='REC · СТОП';
+      setStatus('запись · играйте на пэдах');
+    }
+  });
+  card.querySelector('#stSave').addEventListener('click',function(){
+    if(rec.active){
+      rec.active=false;
+      clearInterval(rec.timer);rec.timer=null;
+      haltBuses();
+      els.rec.classList.remove('on');
+      card.querySelector('#stRec').textContent='REC · СТАРТ';
+    }
+    if(!rec.cells.length){
+      setStatus('пусто: сначала наиграйте что-нибудь на пэдах');
+      return;
+    }
+    saveUserTrack();
+    studio.classList.remove('open');
+    selectTrack(USER_IDX);
+    if(!playing){playTape();}
+    setStatus('сторона записана: my side');
+  });
+  card.querySelector('#stClear').addEventListener('click',function(){
+    rec.cells=[];
+    setStatus('запись очищена');
+  });
+  card.querySelector('#stDel').addEventListener('click',function(){
+    deleteUserTrack();
+    studio.classList.remove('open');
+  });
+  card.querySelector('#stClose').addEventListener('click',function(){
+    if(rec.active){
+      rec.active=false;
+      clearInterval(rec.timer);rec.timer=null;
+      haltBuses();
+      els.rec.classList.remove('on');
+      card.querySelector('#stRec').textContent='REC · СТАРТ';
+    }
+    studio.classList.remove('open');
+  });
+}
+function stepDurRec(){return 60/rec.bpm/4;}
+function resumeBusesFor(r){
+  if(!audioReady)return;
+  var t=ctx.currentTime;
+  tapeBus.gain.setTargetAtTime(1,t,.05);
+  fxBus.gain.setTargetAtTime(1,t,.05);
+  fbGain.gain.setTargetAtTime(.25,t,.05);
+}
+function recTick(){
+  if(!audioReady)return;
+  var sd=stepDurRec();
+  while(rec.next<ctx.currentTime+.15){
+    var s=rec.step%16;
+    var t=rec.next;
+    if(s===0){
+      pad(chordNotes(rec.root,rec.qual),t,sd*16*.98,false);
+      bassNote(rec.root-12,t,sd*6);
+    }
+    if(s===8){bassNote(rec.root-12,t,sd*4);}
+    playBaseDrums(rec.base,s,t,rec.root,rec.qual);
+    rec.next+=sd;
+    rec.step++;
+  }
+}
+function saveUserTrack(){
+  var data={
+    title:'my side',engine:'user',base:rec.base,root:rec.root,qual:rec.qual,
+    bpm:rec.bpm,swing:0,cutoff:3200,hiss:.01,dly:.3,dfb:.25,dur:'01:36',
+    cells:rec.cells.slice(),prog:[],bass:[],mel:[],drums:null
+  };
+  if(USER_IDX>-1&&TRACKS[USER_IDX].engine==='user'){
+    TRACKS[USER_IDX]=data;
+  }else{
+    TRACKS.push(data);
+    USER_IDX=TRACKS.length-1;
+    buildSpot(USER_IDX);
+    var items=currentItems();
+    settleItems(items);
+    applyItems(items);
+  }
+  saveDesk();
+}
+function deleteUserTrack(){
+  if(USER_IDX<0||TRACKS[USER_IDX].engine!=='user')return;
+  if(cur===USER_IDX){cur=0;}
+  TRACKS.splice(USER_IDX,1);
+  if(spotEls[USER_IDX]){spotEls[USER_IDX].remove();}
+  spotEls.splice(USER_IDX,1);
+  homes.splice(USER_IDX,1);
+  USER_IDX=-1;
+  saveDesk();
+  applyTrackMeta();
+  setStatus('сторона my side удалена');
+}
+buildStudio();
+els.rec.addEventListener('click',function(){
+  studio.classList.toggle('open');
+});
 
 function fmt(sec){
   var m=Math.floor(sec/60),s=Math.floor(sec%60);
@@ -987,6 +1277,7 @@ function applyTrackMeta(){
   els.npTime.textContent='00:00 / '+tr.dur;
   document.body.dataset.eng=tr.engine;
   spotEls.forEach(function(sp,i){
+    if(!sp)return;
     sp.classList.toggle('active',i===cur);
     if(i===cur&&homes[i]){
       sp.style.left=homes[i].l+'px';

@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Manrope:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=2">
 </head>
 <body data-eng="tape">
 <div class="glow"></div>
@@ -47,6 +47,10 @@
       <button type="button" class="btn" id="ffBtn" title="следующая кассета (→)">
         <svg viewBox="0 0 12 12"><path d="M6 6L1 2v8zM11 6L6 2v8z"/></svg>
         <span class="lbl">FF</span>
+      </button>
+      <button type="button" class="btn rec" id="recBtn" title="записать свою сторону">
+        <svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="4"/></svg>
+        <span class="lbl">REC</span>
       </button>
       <div class="jack"></div>
     </div>
@@ -128,10 +132,10 @@
       <li>кассеты на столе: кликните любую или перетащите к окну плеера; на телефоне — касание</li>
       <li>плеер, наушники и этот вкладыш можно перетаскивать мышью</li>
       <li>двойной клик по пустому месту стола пересыпает кассеты заново</li>
-      <li>нажмите play — звук синтезируется в браузере в реальном времени</li>
+      <li>кнопка REC — запишите свою сторону: аккомпанемент и пять пэдов пентатоники</li>
       <li>клавиши: пробел — play / pause, S — stop, стрелки и 1–9, 0 — кассеты</li>
     </ul>
-    <p class="status" id="status"></p>
+    <p class="status" id="status" role="status"></p>
   </aside>
 
   <div class="spots" id="spots"></div>
@@ -143,6 +147,6 @@
 
 <noscript><p class="foot">для работы плеера нужен включённый JavaScript.</p></noscript>
 
-<script src="script.js"></script>
+<script src="script.js?v=2"></script>
 </body>
 </html>
