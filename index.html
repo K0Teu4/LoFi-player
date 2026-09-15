@@ -12,6 +12,7 @@
 </head>
 <body>
 <div class="glow"></div>
+<div class="rain" id="rain"></div>
 
 <main class="scene">
   <svg class="phones" viewBox="0 0 200 200" aria-hidden="true">
@@ -60,7 +61,7 @@
           <span class="tm" id="lcdTime">00:00</span>
         </div>
         <div class="window">
-          <div class="cassette" id="cassette">
+          <div class="cassette cassette-tape" id="cassette">
             <div class="tape-line t"></div>
             <div class="tape-line b"></div>
             <svg class="reel" id="reelL" viewBox="0 0 100 100">
@@ -85,16 +86,13 @@
               <circle class="hub" cx="50" cy="50" r="10"/>
             </svg>
           </div>
-          <div class="led"></div>
+          <div class="led" id="led"></div>
         </div>
         <div class="counter-row">
           <span class="counter" id="counter"></span>
           <span class="hint">счётчик ленты · ваше время здесь</span>
         </div>
-        <div class="meter">
-          <div class="mrow"><b>L</b><div class="segs" id="mL"></div></div>
-          <div class="mrow"><b>R</b><div class="segs" id="mR"></div></div>
-        </div>
+        <div class="spectrum" id="spectrum"></div>
         <div class="vol-row"><label for="vol">VOL</label> <input type="range" id="vol" min="0" max="100" value="70" title="громкость"></div>
         <div class="logo wm">TAPE RADIO · №3</div>
       </div>
