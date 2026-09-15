@@ -1108,6 +1108,7 @@ function playBaseDrums(b,s,t,root,qual){
 var playing=false,started=false,step=0,bar=0,nextTime=0,timer=null,stepDur=.2,playSec=0;
 var barChord=chordNotes(TRACKS[0].prog[0][0],TRACKS[0].prog[0][1]);
 var barRoot=TRACKS[0].prog[0][0];
+var countedForCur=false;
 
 function tourEvent(name){
   if(window.CustomEvent){window.dispatchEvent(new CustomEvent(name));}
@@ -1554,6 +1555,7 @@ function buildStudio(){
     saveUserTrack();
     studio.classList.remove('open');
     cur=USER_IDX;
+    countedForCur=false;
     applyTrackMeta();
     if(playing){
       haltPlayback();
@@ -1612,6 +1614,7 @@ function saveUserTrack(){
     applyItems(items);
   }
   saveDesk();
+  renderStamps();
 }
 function deleteUserTrack(){
   if(USER_IDX<0||TRACKS[USER_IDX].engine!=='user')return;
@@ -1624,6 +1627,7 @@ function deleteUserTrack(){
   rec.cells=[];
   saveDesk();
   applyTrackMeta();
+  renderStamps();
   setStatus('сторона my side удалена');
 }
 buildStudio();
@@ -1758,16 +1762,46 @@ function renderUserTrack(tr,cb){
 
 var radioMode=false;
 var currentSeed=null;
+var radioIdx=-1;
 
-function addGeneratedTrack(seed){
+function updateSpotVisual(i){
+  var sp=spotEls[i];
+  if(!sp)return;
+  var tr=TRACKS[i];
+  if(!tr)return;
+  var box=sp.querySelector('.box');
+  box.dataset.eng=tr.engine;
+  if(tr.generated){box.dataset.generated='true';}else{delete box.dataset.generated;}
+  box.title=tr.title+(tr.seed?' · seed: '+tr.seed:'');
+  box.setAttribute('aria-label','Кассета '+num(i)+': '+tr.title);
+  var lab=sp.querySelector('.bx-label');
+  lab.querySelector('.bx-num').textContent=num(i);
+  lab.querySelector('.bx-title').textContent=tr.title.toUpperCase();
+  lab.style.backgroundImage=artSVG(tr.title+':'+i,tr.engine);
+}
+
+function rollRadio(seed){
   var tr=generateTrack(seed);
-  TRACKS.push(tr);
-  var idx=TRACKS.length-1;
-  buildSpot(idx);
-  var items=currentItems();
-  settleItems(items);
-  applyItems(items);
-  return idx;
+  if(radioIdx<0||!TRACKS[radioIdx]||!TRACKS[radioIdx].generated||TRACKS[radioIdx].user){
+    TRACKS.push(tr);
+    radioIdx=TRACKS.length-1;
+    buildSpot(radioIdx);
+    var items=currentItems();
+    settleItems(items);
+    applyItems(items);
+  } else {
+    TRACKS[radioIdx]=tr;
+    updateSpotVisual(radioIdx);
+  }
+  currentSeed=seed;
+  updateSeedUI();
+  updateURL();
+  if(cur!==radioIdx){
+    selectTrack(radioIdx);
+  } else {
+    applyTrackMeta();
+  }
+  renderStamps();
 }
 
 function updateSeedUI(){
@@ -1795,12 +1829,7 @@ function updateURL(){
 function activateRadio(initialSeed){
   radioMode=true;
   els.radio.classList.add('on');
-  var seed=initialSeed||newRandomSeed();
-  var idx=addGeneratedTrack(seed);
-  currentSeed=seed;
-  updateSeedUI();
-  updateURL();
-  selectTrack(idx);
+  rollRadio(initialSeed||newRandomSeed());
   setStatus('RADIO · бесконечный поток сгенерированных треков');
 }
 
@@ -1819,13 +1848,8 @@ els.radio.addEventListener('click',function(){
 });
 
 els.seedNew.addEventListener('click',function(){
-  var seed=newRandomSeed();
-  var idx=addGeneratedTrack(seed);
-  currentSeed=seed;
-  updateSeedUI();
-  updateURL();
-  selectTrack(idx);
-  setStatus('новый сгенерированный трек: '+TRACKS[idx].title);
+  rollRadio(newRandomSeed());
+  setStatus('новый трек: '+TRACKS[radioIdx].title);
 });
 
 els.seedCopy.addEventListener('click',function(){
@@ -1913,6 +1937,10 @@ function resumePlayback(){
   nextTime=ctx.currentTime+.1;
   if(timer){clearInterval(timer);}
   timer=setInterval(tickScheduler,30);
+  if(!countedForCur){
+    countedForCur=true;
+    logPlay(TRACKS[cur].title);
+  }
   tourEvent('orbita:play');
 }
 function haltPlayback(){
@@ -1932,6 +1960,7 @@ function selectTrack(i){
   els.cassette.classList.add('out');
   setTimeout(function(){
     cur=target;
+    countedForCur=false;
     applyTrackMeta();
     els.cassette.classList.remove('out');
     els.cassette.classList.add('pre-in');
@@ -1986,6 +2015,7 @@ function stopTape(){
   motor(false);
   haltBuses();
   step=0;bar=0;playSec=0;
+  countedForCur=false;
   document.body.classList.remove('is-playing');
   document.body.classList.remove('is-raining');
   els.play.classList.remove('pressed');
@@ -2039,18 +2069,14 @@ function frame(now){
   els.reelR.style.transform='rotate('+aR+'deg)';
   if(playing){
     playSec+=dt;
+    stats.sec+=dt;
     els.lcdTime.textContent=fmt(playSec);
     var dur=parseDur(TRACKS[cur].dur);
     els.npBar.style.width=Math.min(100,(playSec/dur)*100)+'%';
     els.npTime.textContent=fmt(playSec)+' / '+TRACKS[cur].dur;
     if(playSec>=dur){
       if(radioMode){
-        var seed=newRandomSeed();
-        var idx=addGeneratedTrack(seed);
-        currentSeed=seed;
-        updateSeedUI();
-        updateURL();
-        selectTrack(idx);
+        rollRadio(newRandomSeed());
       } else {
         selectTrack(cur+1);
       }
@@ -2153,6 +2179,74 @@ new MutationObserver(function(){paintSpotArt();})
   .observe(els.spots,{childList:true});
 paintSpotArt();
 paintCassetteArt();
+
+var stats={sec:0,plays:{}};
+try{
+  var rs=localStorage.getItem('orbita-stats');
+  if(rs){var ps=JSON.parse(rs);if(ps&&typeof ps==='object'){stats=ps;}}
+}catch(e){}
+var diaryRow=document.createElement('p');
+diaryRow.className='diary';
+els.jcard.insertBefore(diaryRow,els.status);
+var retStyle=document.createElement('style');
+retStyle.id='retention-css';
+retStyle.textContent=
+  '.bx-stamp{position:absolute;top:4px;left:4px;z-index:2;font:700 8px var(--mono);color:#b0503c;transform:rotate(-8deg);letter-spacing:.05em;}'+
+  '.box.fav::after{content:"★";position:absolute;bottom:3px;right:5px;z-index:2;font-size:9px;color:#c2892e;}'+
+  '.diary{margin:10px 0 0;font:700 10px var(--mono);letter-spacing:.08em;color:#8a7a63;}';
+document.head.appendChild(retStyle);
+function saveStats(){
+  try{localStorage.setItem('orbita-stats',JSON.stringify(stats));}catch(e){}
+}
+function logPlay(title){
+  stats.plays[title]=(stats.plays[title]||0)+1;
+  saveStats();
+  renderDiary();
+  renderStamps();
+}
+function favTitle(){
+  var best=null,bc=0;
+  for(var k in stats.plays){
+    if(stats.plays[k]>bc){bc=stats.plays[k];best=k;}
+  }
+  return bc>1?best:null;
+}
+function fmtTotal(sec){
+  var m=Math.floor(sec/60);
+  if(m<60)return m+' мин';
+  var h=Math.floor(m/60);
+  return h+' ч '+(m%60)+' мин';
+}
+function renderDiary(){
+  var total=0;
+  for(var k in stats.plays)total+=stats.plays[k];
+  var f=favTitle();
+  diaryRow.textContent='дневник · '+total+' треков · '+fmtTotal(stats.sec)+(f?' · любимица: '+f+' ×'+stats.plays[f]:'');
+}
+function renderStamps(){
+  var f=favTitle();
+  spotEls.forEach(function(sp,i){
+    if(!sp)return;
+    var tr=TRACKS[i];
+    if(!tr)return;
+    var box=sp.querySelector('.box');
+    var n=stats.plays[tr.title]||0;
+    var st=box.querySelector('.bx-stamp');
+    if(!st){
+      st=document.createElement('span');
+      st.className='bx-stamp';
+      box.appendChild(st);
+    }
+    st.textContent=n>0?'×'+n:'';
+    st.style.display=n>0?'block':'none';
+    box.classList.toggle('fav',tr.title===f);
+  });
+}
+setInterval(function(){
+  if(playing){saveStats();renderDiary();}
+},5000);
+renderDiary();
+renderStamps();
 
 (function(){
   var TOUR_KEY='orbita-tour';
