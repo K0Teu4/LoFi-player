@@ -10,12 +10,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Manrope:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-eng="tape">
 <div class="glow"></div>
 <div class="rain" id="rain"></div>
 
-<main class="scene">
-  <svg class="phones" viewBox="0 0 260 230" aria-hidden="true">
+<main class="table" id="table">
+  <svg class="phones obj" id="phones" viewBox="0 0 260 230" aria-hidden="true">
     <path d="M58 138 C58 44 202 44 202 138" fill="none" stroke="#e6d5c8" stroke-width="16" stroke-linecap="round"/>
     <path d="M62 140 C62 52 198 52 198 140" fill="none" stroke="rgba(11,26,48,.16)" stroke-width="4" stroke-linecap="round"/>
     <rect x="38" y="126" width="40" height="62" rx="18" fill="#0b1a30"/>
@@ -26,44 +26,49 @@
     <rect x="126" y="212" width="16" height="10" rx="3" fill="#0b1a30"/>
   </svg>
 
-  <div class="player-col">
-    <section class="walkman">
-      <span class="screw s1"></span>
-      <span class="screw s2"></span>
-      <div class="top">
-        <div class="play-hint hidden" id="playHint">нажмите play</div>
-        <button type="button" class="btn play" id="playBtn" title="play / pause (пробел)">
-          <svg class="ic-play" viewBox="0 0 12 12"><path d="M2 1l9 5-9 5z"/></svg>
-          <svg class="ic-pause" viewBox="0 0 12 12"><path d="M2 1h3v10H2zM7 1h3v10H7z"/></svg>
-          <span class="lbl">PLAY</span>
-        </button>
-        <button type="button" class="btn" id="stopBtn" title="stop (S)">
-          <svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" rx="1"/></svg>
-          <span class="lbl">STOP</span>
-        </button>
-        <button type="button" class="btn" id="rewBtn" title="предыдущая кассета (←)">
-          <svg viewBox="0 0 12 12"><path d="M6 6l5-4v8zM1 6l5-4v8z"/></svg>
-          <span class="lbl">REW</span>
-        </button>
-        <button type="button" class="btn" id="ffBtn" title="следующая кассета (→)">
-          <svg viewBox="0 0 12 12"><path d="M6 6L1 2v8zM11 6L6 2v8z"/></svg>
-          <span class="lbl">FF</span>
-        </button>
-        <div class="jack"></div>
-      </div>
+  <section class="walkman obj" id="walkman">
+    <span class="screw s1"></span>
+    <span class="screw s2"></span>
+    <div class="top">
+      <div class="play-hint hidden" id="playHint">нажмите play</div>
+      <button type="button" class="btn play" id="playBtn" title="play / pause (пробел)">
+        <svg class="ic-play" viewBox="0 0 12 12"><path d="M2 1l9 5-9 5z"/></svg>
+        <svg class="ic-pause" viewBox="0 0 12 12"><path d="M2 1h3v10H2zM7 1h3v10H7z"/></svg>
+        <span class="lbl">PLAY</span>
+      </button>
+      <button type="button" class="btn" id="stopBtn" title="stop (S)">
+        <svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" rx="1"/></svg>
+        <span class="lbl">STOP</span>
+      </button>
+      <button type="button" class="btn" id="rewBtn" title="предыдущая кассета (←)">
+        <svg viewBox="0 0 12 12"><path d="M6 6l5-4v8zM1 6l5-4v8z"/></svg>
+        <span class="lbl">REW</span>
+      </button>
+      <button type="button" class="btn" id="ffBtn" title="следующая кассета (→)">
+        <svg viewBox="0 0 12 12"><path d="M6 6L1 2v8zM11 6L6 2v8z"/></svg>
+        <span class="lbl">FF</span>
+      </button>
+      <div class="jack"></div>
+    </div>
 
-      <div class="body">
-        <div class="face">
-          <div class="logo">ORBITA</div>
-          <div class="lcd">
-            <span id="lcdNum">01</span>
-            <span class="t" id="lcdTitle">NIGHT BUS</span>
-            <span class="tm" id="lcdTime">00:00</span>
-          </div>
-          <div class="window">
-            <div class="cassette" id="cassette" data-eng="tape">
-              <div class="shell">
-                <div class="well well-l">
+    <div class="body">
+      <div class="face">
+        <div class="logo">ORBITA</div>
+        <div class="lcd">
+          <span id="lcdNum">01</span>
+          <span class="t" id="lcdTitle">NIGHT BUS</span>
+          <span class="tm" id="lcdTime">00:00</span>
+        </div>
+        <div class="window" id="dropZone">
+          <div class="cassette" id="cassette" data-eng="tape">
+            <div class="shell">
+              <div class="label">
+                <span class="label-num" id="cassNum">01</span>
+                <span class="label-title" id="tapeLabel">NIGHT BUS</span>
+                <span class="label-eng" id="cassEng">TAPE</span>
+              </div>
+              <div class="wells">
+                <div class="well">
                   <svg class="reel" id="reelL" viewBox="0 0 100 100">
                     <circle class="pack" cx="50" cy="50" r="47"/>
                     <circle class="reel-body" cx="50" cy="50" r="34"/>
@@ -76,12 +81,7 @@
                     <circle class="hub" cx="50" cy="50" r="9"/>
                   </svg>
                 </div>
-                <div class="label">
-                  <span class="label-num" id="cassNum">01</span>
-                  <span class="label-title" id="tapeLabel">NIGHT BUS</span>
-                  <span class="label-eng" id="cassEng">TAPE</span>
-                </div>
-                <div class="well well-r">
+                <div class="well">
                   <svg class="reel" id="reelR" viewBox="0 0 100 100">
                     <circle class="pack pack-sm" cx="50" cy="50" r="40"/>
                     <circle class="reel-body" cx="50" cy="50" r="34"/>
@@ -96,29 +96,24 @@
                 </div>
               </div>
             </div>
-            <div class="led" id="led"></div>
           </div>
-          <div class="counter-row">
-            <span class="counter" id="counter"></span>
-            <span class="hint">время на сайте</span>
-          </div>
-          <div class="spectrum" id="spectrum"></div>
-          <div class="vol-row"><label for="vol">VOL</label> <input type="range" id="vol" min="0" max="100" value="70" title="громкость"></div>
-          <div class="logo wm">TAPE RADIO · №3</div>
+          <div class="led" id="led"></div>
         </div>
-        <div class="side"></div>
+        <div class="counter-row">
+          <span class="counter" id="counter"></span>
+          <span class="hint">время на сайте</span>
+        </div>
+        <div class="spectrum" id="spectrum"></div>
+        <div class="vol-row"><label for="vol">VOL</label> <input type="range" id="vol" min="0" max="100" value="70" title="громкость"></div>
+        <div class="logo wm">TAPE RADIO · №3</div>
       </div>
-    </section>
-
-    <div class="shelf-wrap">
-      <div class="shelf-cap">ПОЛКА КАССЕТ</div>
-      <div class="shelf" id="shelf"></div>
+      <div class="side"></div>
     </div>
-  </div>
+  </section>
 
-  <aside class="jcard">
+  <aside class="jcard obj" id="jcard">
     <h1>ORBITA</h1>
-    <p class="tag">шесть треков, синтезированных в браузере</p>
+    <p class="tag">десять треков, синтезированных в браузере</p>
     <div class="np">
       <div class="np-row">
         <span class="np-title" id="npTitle">night bus</span>
@@ -130,17 +125,22 @@
       </div>
     </div>
     <ul class="howto">
-      <li>выберите кассету на полке под плеером</li>
+      <li>кассеты на столе: кликните любую или перетащите к окну плеера; на телефоне — касание</li>
+      <li>плеер, наушники и этот вкладыш можно перетаскивать мышью</li>
+      <li>двойной клик по пустому месту стола пересыпает кассеты заново</li>
       <li>нажмите play — звук синтезируется в браузере в реальном времени</li>
-      <li>клавиши: пробел — play / pause, S — stop, стрелки — переключение кассет</li>
+      <li>клавиши: пробел — play / pause, S — stop, стрелки и 1–9, 0 — кассеты</li>
     </ul>
     <p class="status" id="status"></p>
   </aside>
+
+  <div class="spots" id="spots"></div>
+
+  <p class="foot">
+    <kbd>space</kbd> play / pause · <kbd>S</kbd> stop · <kbd>←</kbd><kbd>→</kbd> и <kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd> кассеты · двойной клик по столу — пересыпать
+  </p>
 </main>
 
-<p class="foot">
-  <kbd>space</kbd> play / pause · <kbd>S</kbd> stop · <kbd>←</kbd><kbd>→</kbd> переключение кассет
-</p>
 <noscript><p class="foot">для работы плеера нужен включённый JavaScript.</p></noscript>
 
 <script src="script.js"></script>
