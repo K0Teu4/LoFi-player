@@ -14,10 +14,11 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="mask-icon" href="icon.svg" color="#8ccfca">
 <link rel="apple-touch-icon" href="icon.svg">
+<link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Manrope:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 <script>
 (function(){
   var http=location.protocol==='http:'||location.protocol==='https:';
@@ -54,7 +55,6 @@
     <span class="screw s1"></span>
     <span class="screw s2"></span>
     <div class="top">
-      <div class="play-hint hidden" id="playHint" role="tooltip">нажмите play</div>
       <button type="button" class="btn play" id="playBtn" title="play / pause (пробел)">
         <svg class="ic-play" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z"/></svg>
         <svg class="ic-pause" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1h3v10H2zM7 1h3v10H7z"/></svg>
@@ -72,7 +72,7 @@
         <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 6L1 2v8zM11 6L6 2v8z"/></svg>
         <span class="lbl">FF</span>
       </button>
-      <button type="button" class="btn radio" id="radioBtn" title="бесконечное радио">
+      <button type="button" class="btn radio" id="radioBtn" title="бесконечное радио (R)">
         <svg viewBox="0 0 12 12" aria-hidden="true">
           <path d="M1 7c0-2.8 2.2-5 5-5s5 2.2 5 5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
           <path d="M3.2 7c0-1.6 1.3-2.8 2.8-2.8s2.8 1.3 2.8 2.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
@@ -188,6 +188,6 @@
 
 <noscript><p class="foot">для работы плеера нужен включённый JavaScript.</p></noscript>
 
-<script src="script.js?v=6"></script>
+<script src="script.js?v=7"></script>
 </body>
 </html>
